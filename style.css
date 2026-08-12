@@ -5,10 +5,18 @@
 }
 
 :root {
-  --bg: #ffffff;
-  --text: #0a0a0a;
-  --page-padding: 10px;
-  --grid-gap: 6px;
+  --bg-top: #3b3e45;
+  --bg-mid: #121317;
+  --bg-bottom: #050506;
+
+  --text: #f2f3f5;
+  --muted: #8b9099;
+
+  /* Size of one album cover */
+  --cover: clamp(150px, 23vw, 300px);
+
+  /* How many covers fit inside the scroller (controls how deep the fan goes) */
+  --visible: 5.5;
 }
 
 html {
@@ -18,8 +26,15 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--bg);
-  color: #fff;
+  color: var(--text);
+  background: var(--bg-bottom);
+  background-image:
+    radial-gradient(120% 60% at 50% 62%, rgba(255, 255, 255, 0.07), transparent 70%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 46%, var(--bg-bottom) 100%);
+  background-attachment: fixed;
+
+  font-family: "Lucida Grande", "Lucida Sans Unicode", -apple-system,
+    BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -32,7 +47,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 34px 20px 40px;
+  padding: 34px 20px 26px;
 }
 
 .logo {
@@ -46,61 +61,242 @@ body {
 
 
 /* =========================
-   IMAGE GRID
+   COVER FLOW — STAGE
    ========================= */
 
-.grid {
-  width: 100%;
-  padding: 0 var(--page-padding) 30px;
-
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: var(--grid-gap);
+.flow {
+  padding-bottom: 46px;
 }
 
-.grid-item {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
+.stage {
   width: 100%;
+  max-width: calc(var(--cover) * var(--visible));
+  margin-inline: auto;
+}
+
+.cards {
+  position: relative;
+  display: flex;
+  list-style: none;
+  margin: 0;
+  width: 100%;
+
+  /* Half a cover of padding on each side so the first and last can reach the centre */
+  padding-inline: calc(50% - var(--cover) / 2);
+  padding-block: calc(var(--cover) * 0.24) calc(var(--cover) * 0.6);
+
+  overflow-x: scroll;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.cards::-webkit-scrollbar {
+  display: none;
+}
+
+.cards li {
+  flex: 0 0 var(--cover);
+  width: var(--cover);
   aspect-ratio: 1 / 1;
 
-  overflow: hidden;
-  text-decoration: none;
+  scroll-snap-align: center;
+
+  /* Makes the 3D rotation read as depth rather than a flat squash */
+  perspective: 40em;
+  z-index: 1;
 }
 
-.grid-item img {
+.cards li > a {
+  display: block;
+  width: 100%;
+  height: 100%;
+  text-decoration: none;
+  outline-offset: 6px;
+}
+
+.cards li img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 
-  transition:
-    transform 0.25s ease,
-    opacity 0.25s ease;
+  backface-visibility: hidden;
 
-  will-change: transform;
+  /* The classic iTunes floor reflection */
+  -webkit-box-reflect: below 2px
+    linear-gradient(rgb(0 0 0 / 0) 58%, rgb(0 0 0 / 0.42));
+}
+
+.cards li > a:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.85);
 }
 
 
 /* =========================
-   HOVER
+   COVER FLOW — MOTION
    ========================= */
 
-.grid-item:hover img,
-.grid-item:focus-visible img {
-  transform: scale(0.94);
-  opacity: 0.82;
+@keyframes adjust-z-index {
+  0%   { z-index: 1; }
+  50%  { z-index: 100; }  /* topmost when centred */
+  100% { z-index: 1; }
 }
 
-.grid-item:active img {
-  transform: scale(0.91);
+@keyframes rotate-cover {
+  0%   { transform: translateX(-100%) rotateY(-45deg); }
+  35%  { transform: translateX(0) rotateY(-45deg); }
+  50%  { transform: rotateY(0deg) translateZ(1em) scale(1.25); }
+  65%  { transform: translateX(0) rotateY(45deg); }
+  100% { transform: translateX(100%) rotateY(45deg); }
 }
 
-.grid-item:focus-visible {
-  outline: 1px solid rgba(255,255,255,0.8);
-  outline-offset: 2px;
+@supports (animation-timeline: view()) {
+  .cards li {
+    /* Track each cover as it crosses the scroller */
+    view-timeline-name: --li-in-and-out-of-view;
+    view-timeline-axis: inline;
+
+    animation: linear adjust-z-index both;
+    animation-timeline: --li-in-and-out-of-view;
+  }
+
+  /* Transform the <a>, never the <li>: transforming the li would change the
+     scroll length and make the whole thing flicker. */
+  .cards li > a {
+    animation: linear rotate-cover both;
+    animation-timeline: --li-in-and-out-of-view;
+  }
+}
+
+/* Browsers without view timelines get the same effect driven by JS
+   (the .no-sda class is added by the script). */
+.no-sda .cards li > a {
+  transform-origin: 50% 50%;
+}
+
+
+/* =========================
+   NOW PLAYING / CAPTION
+   ========================= */
+
+.meta {
+  min-height: 3.4em;
+  padding: 0 20px;
+  text-align: center;
+}
+
+.meta-title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  text-shadow: 0 1px 0 rgb(0 0 0 / 0.6);
+}
+
+.meta-cat {
+  margin: 4px 0 0;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+
+/* =========================
+   SCRUBBER
+   ========================= */
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  width: min(520px, 82vw);
+  margin: 20px auto 0;
+}
+
+.nav {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+
+  font: inherit;
+  font-size: 17px;
+  line-height: 1;
+  color: var(--text);
+
+  background: rgb(255 255 255 / 0.06);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  border-radius: 4px;
+  cursor: pointer;
+
+  transition: background 0.15s ease;
+}
+
+.nav:hover {
+  background: rgb(255 255 255 / 0.14);
+}
+
+.nav:active {
+  background: rgb(255 255 255 / 0.22);
+}
+
+.scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1 1 auto;
+  height: 20px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.scrubber::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.55);
+  box-shadow:
+    inset 0 1px 2px rgb(0 0 0 / 0.8),
+    0 1px 0 rgb(255 255 255 / 0.08);
+}
+
+.scrubber::-moz-range-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 0.55);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.8);
+}
+
+.scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 15px;
+  margin-top: -5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fdfdfd, #c6c8cc);
+  border: 1px solid rgb(0 0 0 / 0.45);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+.scrubber::-moz-range-thumb {
+  width: 13px;
+  height: 15px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #fdfdfd, #c6c8cc);
+  border: 1px solid rgb(0 0 0 / 0.45);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+.scrubber:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.85);
+  outline-offset: 3px;
+  border-radius: 3px;
 }
 
 
@@ -108,39 +304,45 @@ body {
    RESPONSIVE
    ========================= */
 
-@media (max-width: 1200px) {
-  .grid {
-    grid-template-columns: repeat(8, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+  :root {
+    --visible: 4.5;
+    --cover: clamp(150px, 32vw, 260px);
   }
 }
 
 @media (max-width: 650px) {
   :root {
-    --page-padding: 7px;
-    --grid-gap: 5px;
+    --visible: 3.4;
+    --cover: clamp(140px, 46vw, 220px);
   }
 
   .header {
-    padding: 28px 14px 32px;
+    padding: 28px 14px 20px;
   }
 
   .logo {
     width: min(220px, 65vw);
   }
-
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
 }
 
-@media (max-width: 420px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+
+/* =========================
+   REDUCED MOTION
+   ========================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .cards {
+    scroll-behavior: auto;
+  }
+
+  .cards li,
+  .cards li > a {
+    animation: none;
+    transform: none;
+  }
+
+  .cards li {
+    perspective: none;
   }
 }
