@@ -5,7 +5,8 @@
 }
 
 :root {
-  --bg: #0a0a0a;
+  --bg: #ffffff;
+  --text: #0a0a0a;
   --page-padding: 10px;
   --grid-gap: 6px;
 }
@@ -40,7 +41,7 @@ body {
   height: auto;
 
   /* Remove this if your logo file is already white */
-  filter: brightness(0) invert(1);
+  filter: none;
 }
 
 
