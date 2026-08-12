@@ -12,26 +12,52 @@
   --text: #f2f3f5;
   --muted: #8b9099;
 
-  /* Size of one album cover */
-  --cover: clamp(150px, 23vw, 300px);
+  /* Vertical space taken by everything that is NOT the covers:
+     header + caption + scrubber + bottom padding, plus a few px of slack.
+     If you add or remove something in that stack, change this number. */
+  --chrome: 190px;
 
-  /* How many covers fit inside the scroller (controls how deep the fan goes) */
+  /* The cover strip is 1.79x a cover tall (0.24 above + 1 + 0.55 of reflection
+     below), so the tallest cover that still fits is (viewport - chrome) / 1.8. */
+  --cover: max(
+    110px,
+    min(300px, 46vw, calc((100dvh - var(--chrome)) / 1.8))
+  );
+
+  /* How many covers fit in the scroller (controls how deep the fan goes) */
   --visible: 5.5;
+}
+
+/* Fallback for browsers without dvh */
+@supports not (height: 100dvh) {
+  :root {
+    --cover: max(110px, min(300px, 46vw, calc((100vh - var(--chrome)) / 1.8)));
+  }
 }
 
 html {
   font-size: 16px;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;          /* the page itself never scrolls */
+  overscroll-behavior: none; /* no rubber-banding on the edges */
+}
+
 body {
   margin: 0;
-  min-height: 100vh;
+  height: 100dvh;
+
+  display: flex;
+  flex-direction: column;
+
   color: var(--text);
   background: var(--bg-bottom);
   background-image:
     radial-gradient(120% 60% at 50% 62%, rgba(255, 255, 255, 0.07), transparent 70%),
     linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 46%, var(--bg-bottom) 100%);
-  background-attachment: fixed;
 
   font-family: "Lucida Grande", "Lucida Sans Unicode", -apple-system,
     BlinkMacSystemFont, "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -44,16 +70,21 @@ body {
    ========================= */
 
 .header {
+  flex: 0 0 auto;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 34px 20px 26px;
+  padding: 18px 20px 12px;
 }
 
+/* Sized by HEIGHT, so the header takes a predictable amount of the viewport
+   whatever the aspect ratio of your logo file is. */
 .logo {
   display: block;
-  width: min(260px, 60vw);
-  height: auto;
+  height: clamp(26px, 6.5vh, 48px);
+  width: auto;
+  max-width: 60vw;
+  object-fit: contain;
 
   /* Remove this if your logo file is already white */
   filter: brightness(0) invert(1);
@@ -65,7 +96,14 @@ body {
    ========================= */
 
 .flow {
-  padding-bottom: 46px;
+  flex: 1 1 auto;
+  min-height: 0;             /* lets the flex child actually shrink */
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;   /* spare pixels go above and below the covers */
+
+  padding-bottom: 16px;
 }
 
 .stage {
@@ -83,9 +121,10 @@ body {
 
   /* Half a cover of padding on each side so the first and last can reach the centre */
   padding-inline: calc(50% - var(--cover) / 2);
-  padding-block: calc(var(--cover) * 0.24) calc(var(--cover) * 0.6);
+  padding-block: calc(var(--cover) * 0.24) calc(var(--cover) * 0.55);
 
   overflow-x: scroll;
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
 
@@ -127,7 +166,7 @@ body {
 
   /* The classic iTunes floor reflection */
   -webkit-box-reflect: below 2px
-    linear-gradient(rgb(0 0 0 / 0) 58%, rgb(0 0 0 / 0.42));
+    linear-gradient(rgb(0 0 0 / 0) 62%, rgb(0 0 0 / 0.42));
 }
 
 .cards li > a:focus-visible {
@@ -148,7 +187,7 @@ body {
 @keyframes rotate-cover {
   0%   { transform: translateX(-100%) rotateY(-45deg); }
   35%  { transform: translateX(0) rotateY(-45deg); }
-  50%  { transform: rotateY(0deg) translateZ(1em) scale(1.25); }
+  50%  { transform: rotateY(0deg) translateZ(1em) scale(1.2); }
   65%  { transform: translateX(0) rotateY(45deg); }
   100% { transform: translateX(100%) rotateY(45deg); }
 }
@@ -183,14 +222,15 @@ body {
    ========================= */
 
 .meta {
-  min-height: 3.4em;
+  flex: 0 0 auto;
+  min-height: 40px;
   padding: 0 20px;
   text-align: center;
 }
 
 .meta-title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.01em;
   color: var(--text);
@@ -198,8 +238,8 @@ body {
 }
 
 .meta-cat {
-  margin: 4px 0 0;
-  font-size: 0.72rem;
+  margin: 3px 0 0;
+  font-size: 0.68rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
@@ -211,12 +251,13 @@ body {
    ========================= */
 
 .controls {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   gap: 10px;
 
   width: min(520px, 82vw);
-  margin: 20px auto 0;
+  margin: 14px auto 0;
 }
 
 .nav {
@@ -301,28 +342,61 @@ body {
 
 
 /* =========================
-   RESPONSIVE
+   RESPONSIVE — WIDTH
    ========================= */
 
 @media (max-width: 900px) {
   :root {
     --visible: 4.5;
-    --cover: clamp(150px, 32vw, 260px);
   }
 }
 
 @media (max-width: 650px) {
   :root {
     --visible: 3.4;
-    --cover: clamp(140px, 46vw, 220px);
   }
 
   .header {
-    padding: 28px 14px 20px;
+    padding: 14px 14px 10px;
+  }
+}
+
+
+/* =========================
+   RESPONSIVE — HEIGHT
+   Short viewports (laptop in landscape, phone on its side): drop the
+   chrome budget so the covers stay as big as they can.
+   ========================= */
+
+@media (max-height: 620px) {
+  :root {
+    --chrome: 150px;
   }
 
-  .logo {
-    width: min(220px, 65vw);
+  .header {
+    padding: 10px 14px 6px;
+  }
+
+  .meta {
+    min-height: 32px;
+  }
+
+  .meta-cat {
+    display: none;
+  }
+
+  .controls {
+    margin-top: 8px;
+  }
+}
+
+@media (max-height: 460px) {
+  :root {
+    --chrome: 108px;
+  }
+
+  .meta {
+    display: none;
   }
 }
 
