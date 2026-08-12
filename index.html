@@ -8,13 +8,6 @@
 
   <link rel="stylesheet" href="style.css">
 
-    <script>
-    const grid = document.querySelector('.grid');
-
-    [...grid.children]
-      .reverse()
-      .forEach(item => grid.appendChild(item));
-  </script>
 </head>
 
 <body>
@@ -113,6 +106,12 @@
       <img src="images/kb022.jpg" alt="">
 
   </main>
+  <script>
+    const grid = document.querySelector('.grid');
 
+    [...grid.children]
+      .reverse()
+      .forEach(item => grid.appendChild(item));
+  </script>
 </body>
 </html>
